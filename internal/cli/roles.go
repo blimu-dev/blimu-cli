@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/blimu-dev/blimu-cli/pkg/config"
 	blimu "github.com/blimu-dev/blimu-go"
 	"github.com/spf13/cobra"
 )
@@ -77,31 +76,28 @@ func runRolesCreate(cmd *cobra.Command, args []string) error {
 	resourceType := args[2]
 	resourceID := args[3]
 
-	// Load CLI config
-	cliConfig, err := config.LoadCLIConfig()
-	if err != nil {
-		return fmt.Errorf("failed to load CLI config: %w", err)
+	// Get shared context
+	ctx := GetContext()
+
+	// Validate environment is set
+	if err := ctx.ValidateEnvironment(); err != nil {
+		return err
 	}
 
-	apiURL, apiKey, err := cliConfig.GetAPIClient()
+	// Get current environment info
+	_, envName, err := ctx.GetCurrentEnvironment()
 	if err != nil {
-		return fmt.Errorf("failed to get API client config: %w", err)
-	}
-
-	currentEnv, _ := cliConfig.GetCurrentEnvironment()
-	envName := cliConfig.CurrentEnvironment
-	if currentEnv != nil && currentEnv.Name != "" {
-		envName = currentEnv.Name
+		return fmt.Errorf("failed to get current environment: %w", err)
 	}
 
 	fmt.Printf("👤 Assigning role '%s' to user '%s' on resource '%s:%s' in environment '%s'...\n",
 		role, userID, resourceType, resourceID, envName)
 
-	// Create Blimu client
-	client := blimu.NewClient(
-		blimu.WithBaseURL(apiURL),
-		blimu.WithApiKeyAuth(apiKey),
-	)
+	// Get API client from context
+	client, err := ctx.GetClient()
+	if err != nil {
+		return fmt.Errorf("failed to get API client: %w", err)
+	}
 
 	// Prepare role assignment body
 	body := blimu.UserRoleCreateBodyDto{
@@ -128,21 +124,18 @@ func runRolesCreate(cmd *cobra.Command, args []string) error {
 func runRolesBulk(cmd *cobra.Command, args []string) error {
 	csvFile := args[0]
 
-	// Load CLI config
-	cliConfig, err := config.LoadCLIConfig()
-	if err != nil {
-		return fmt.Errorf("failed to load CLI config: %w", err)
+	// Get shared context
+	ctx := GetContext()
+
+	// Validate environment is set
+	if err := ctx.ValidateEnvironment(); err != nil {
+		return err
 	}
 
-	apiURL, apiKey, err := cliConfig.GetAPIClient()
+	// Get current environment info
+	_, envName, err := ctx.GetCurrentEnvironment()
 	if err != nil {
-		return fmt.Errorf("failed to get API client config: %w", err)
-	}
-
-	currentEnv, _ := cliConfig.GetCurrentEnvironment()
-	envName := cliConfig.CurrentEnvironment
-	if currentEnv != nil && currentEnv.Name != "" {
-		envName = currentEnv.Name
+		return fmt.Errorf("failed to get current environment: %w", err)
 	}
 
 	fmt.Printf("📥 Loading user roles from %s...\n", csvFile)
@@ -160,11 +153,11 @@ func runRolesBulk(cmd *cobra.Command, args []string) error {
 		fmt.Printf("⚠️  --skip-existing flag is not yet supported by the API. Flag will be ignored.\n")
 	}
 
-	// Create Blimu client
-	client := blimu.NewClient(
-		blimu.WithBaseURL(apiURL),
-		blimu.WithApiKeyAuth(apiKey),
-	)
+	// Get API client from context
+	client, err := ctx.GetClient()
+	if err != nil {
+		return fmt.Errorf("failed to get API client: %w", err)
+	}
 
 	// Process in batches to avoid payload limits
 	if rolesBatchSize <= 0 {

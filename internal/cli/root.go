@@ -7,6 +7,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Global context instance - similar to kubectl's approach
+var globalContext *Context
+
+// GetContext returns the global CLI context, initializing it if necessary
+func GetContext() *Context {
+	if globalContext == nil {
+		globalContext = NewContext()
+	}
+	return globalContext
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "blimu",
 	Short: "Blimu CLI - Generate custom SDKs and manage your Blimu configuration",
@@ -16,6 +27,17 @@ It allows you to:
 - Validate your resource configurations  
 - Generate custom SDKs based on your resources
 - Authenticate with Blimu API`,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Initialize the global context
+		ctx := GetContext()
+
+		// Load CLI configuration for all commands
+		if err := ctx.LoadCLIConfig(); err != nil {
+			return fmt.Errorf("failed to load CLI configuration: %w", err)
+		}
+
+		return nil
+	},
 }
 
 // Execute runs the root command

@@ -14,28 +14,37 @@ var envCurrentCmd = &cobra.Command{
 }
 
 func runEnvCurrent(cmd *cobra.Command, args []string) error {
-	cliConfig, currentEnv, err := getCurrentEnvironmentInfo()
-	if err != nil {
+	// Get shared context
+	ctx := GetContext()
+
+	// Check if environment is set
+	if !ctx.IsEnvironmentSet() {
 		fmt.Println("No current environment set.")
 		fmt.Println("Use 'blimu env create <name>' to create an environment.")
 		return nil
 	}
 
-	// Get SDK client
-	sdk, err := getSDKClient()
+	// Get current environment info
+	currentEnv, envName, err := ctx.GetCurrentEnvironment()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get current environment: %w", err)
+	}
+
+	// Get API client from context
+	client, err := ctx.GetClient()
+	if err != nil {
+		return fmt.Errorf("failed to get API client: %w", err)
 	}
 
 	// Fetch environment details from API if we have an ID
 	if currentEnv.ID != "" {
-		apiEnv, err := sdk.Environments.Get(currentEnv.ID)
+		apiEnv, err := client.Environments.Get(currentEnv.ID)
 		if err != nil {
 			fmt.Printf("Warning: Failed to fetch environment details from API: %v\n\n", err)
 			// Fall back to showing local config only
 		} else {
 			// Show API data (most up-to-date)
-			fmt.Printf("Current environment: %s\n", cliConfig.CurrentEnvironment)
+			fmt.Printf("Current environment: %s\n", envName)
 			fmt.Printf("  Name: %s\n", apiEnv.Name)
 			fmt.Printf("  ID: %s\n", apiEnv.Id)
 			if apiEnv.LookupKey != nil && *apiEnv.LookupKey != "" {
@@ -47,25 +56,17 @@ func runEnvCurrent(cmd *cobra.Command, args []string) error {
 
 			// Show local configuration
 			fmt.Printf("\nLocal configuration:\n")
-			fmt.Printf("  API URL: %s\n", func() string {
-				if currentEnv.APIURL != "" {
-					return currentEnv.APIURL
-				}
-				return cliConfig.DefaultAPIURL
-			}())
+			apiURL, _, _ := ctx.GetAPIConfig()
+			fmt.Printf("  API URL: %s\n", apiURL)
 
 			return nil
 		}
 	}
 
 	// Fallback: show local configuration only
-	fmt.Printf("Current environment: %s\n", cliConfig.CurrentEnvironment)
-	fmt.Printf("  API URL: %s\n", func() string {
-		if currentEnv.APIURL != "" {
-			return currentEnv.APIURL
-		}
-		return cliConfig.DefaultAPIURL
-	}())
+	fmt.Printf("Current environment: %s\n", envName)
+	apiURL, _, _ := ctx.GetAPIConfig()
+	fmt.Printf("  API URL: %s\n", apiURL)
 
 	if currentEnv.LookupKey != "" {
 		fmt.Printf("  Lookup Key: %s\n", currentEnv.LookupKey)

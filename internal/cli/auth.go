@@ -53,21 +53,24 @@ func init() {
 }
 
 func runTestAuth(cmd *cobra.Command, args []string) error {
-	// Load CLI config
-	cliConfig, err := config.LoadCLIConfig()
-	if err != nil {
-		return fmt.Errorf("failed to load CLI config: %w", err)
+	// Get shared context
+	ctx := GetContext()
+
+	// Validate environment is set
+	if err := ctx.ValidateEnvironment(); err != nil {
+		return err
 	}
 
-	apiURL, apiKey, err := cliConfig.GetAPIClient()
+	// Get API configuration from context
+	apiURL, apiKey, err := ctx.GetAPIConfig()
 	if err != nil {
 		return fmt.Errorf("failed to get API client config: %w", err)
 	}
 
-	currentEnv, _ := cliConfig.GetCurrentEnvironment()
-	envName := cliConfig.CurrentEnvironment
-	if currentEnv != nil && currentEnv.Name != "" {
-		envName = currentEnv.Name
+	// Get current environment info
+	_, envName, err := ctx.GetCurrentEnvironment()
+	if err != nil {
+		return fmt.Errorf("failed to get current environment: %w", err)
 	}
 
 	fmt.Printf("🔐 Testing authentication for environment '%s' with %s...\n", envName, apiURL)
@@ -91,40 +94,38 @@ func runTestAuth(cmd *cobra.Command, args []string) error {
 }
 
 func runPushAuth(cmd *cobra.Command, args []string) error {
-	// Load CLI config
-	cliConfig, err := config.LoadCLIConfig()
-	if err != nil {
-		return fmt.Errorf("failed to load CLI config: %w", err)
+	// Get shared context
+	ctx := GetContext()
+
+	// Validate environment is set
+	if err := ctx.ValidateEnvironment(); err != nil {
+		return err
 	}
 
 	// Determine which environment to use
 	var targetEnvName string
-	var targetEnv *config.Environment
 
 	if pushEnvName != "" {
 		// Use specified environment
 		targetEnvName = pushEnvName
-		env, exists := cliConfig.Environments[pushEnvName]
-		if !exists {
+		_, err := ctx.GetEnvironment(pushEnvName)
+		if err != nil {
 			return fmt.Errorf("environment '%s' not found", pushEnvName)
 		}
-		targetEnv = &env
 	} else {
 		// Use current environment
-		targetEnvName = cliConfig.CurrentEnvironment
-		env, err := cliConfig.GetCurrentEnvironment()
+		_, envName, err := ctx.GetCurrentEnvironment()
 		if err != nil {
 			return fmt.Errorf("failed to get current environment: %w", err)
 		}
-		targetEnv = env
+		targetEnvName = envName
 	}
 
 	// Get API client config for the target environment
-	apiURL := targetEnv.APIURL
-	if apiURL == "" {
-		apiURL = cliConfig.DefaultAPIURL
+	apiURL, apiKey, err := ctx.GetAPIConfigForEnvironment(targetEnvName)
+	if err != nil {
+		return fmt.Errorf("failed to get API config for environment '%s': %w", targetEnvName, err)
 	}
-	apiKey := targetEnv.APIKey
 
 	if apiKey == "" {
 		return fmt.Errorf("no API key configured for environment '%s'", targetEnvName)
@@ -152,10 +153,15 @@ func runPushAuth(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("📁 Found .blimu configuration in %s\n", configDir)
 
-	// Load .blimu config
-	blimuConfig, err := config.LoadBlimuConfig(configDir)
-	if err != nil {
+	// Load .blimu config into context
+	if err := ctx.LoadBlimuConfig(configDir); err != nil {
 		return fmt.Errorf("failed to load .blimu configuration: %w", err)
+	}
+
+	// Get the loaded config from context
+	blimuConfig := ctx.BlimuConfig
+	if blimuConfig == nil {
+		return fmt.Errorf("failed to load .blimu configuration")
 	}
 
 	fmt.Printf("✅ Loaded configuration with:\n")

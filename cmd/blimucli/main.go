@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/blimu-dev/blimu-cli/internal/cli"
+	"github.com/blimu-dev/blimu-cli/cmd"
 )
 
 func main() {
-	cli.Execute()
+	cmd.Execute()
 }
