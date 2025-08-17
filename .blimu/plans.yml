@@ -1,0 +1,15 @@
+starter:
+  name: "Starter Plan"
+  description: "Perfect for single brands"
+
+pro:
+  name: "Pro Plan"
+  description: "For growing teams"
+
+agency:
+  name: "Agency Plan"
+  description: "For multiple brands"
+
+enterprise:
+  name: "Enterprise Plan"
+  description: "For large organizations"

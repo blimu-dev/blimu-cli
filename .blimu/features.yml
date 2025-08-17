@@ -1,0 +1,7 @@
+agency_experience:
+  plans: [agency] # Must exist in plans.yml
+  default_enabled: true
+  entitlements: # Must exist in entitlements.yml
+    - organization:create_brand
+    - organization:archive_brand
+    - brand:invite_user

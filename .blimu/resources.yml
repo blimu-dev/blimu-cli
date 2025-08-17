@@ -1,0 +1,24 @@
+organization:
+  roles: [guest, viewer, editor, billing, admin]
+
+workspace:
+  roles: [admin, editor, viewer]
+  roles_inheritance:
+    editor: [organization->admin, organization->editor]
+    viewer: [organization->billing]
+
+  parents:
+    organization:
+      required: true
+
+brand:
+  roles: [admin, editor, viewer]
+  roles_inheritance:
+    editor: [workspace->admin, workspace->editor]
+    viewer: [workspace->viewer]
+
+  parents:
+    workspace:
+      required: false
+    organization:
+      required: false

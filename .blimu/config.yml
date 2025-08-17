@@ -1,0 +1,17 @@
+name: "Blimu CLI SDKs"
+baseURL: "https://api.blimu.dev"
+
+clients:
+  - type: typescript
+    outDir: ./blimu-sdk
+    packageName: blimu-client
+    name: BlimuClient
+    postCommand:
+      - "npx prettier --write ."
+  - type: go
+    outDir: ./blimu-sdk-go
+    packageName: github.com/blimu-dev/blimu-sdk-go
+    moduleName: github.com/blimu-dev/blimu-sdk-go
+    name: BlimuClient
+    postCommand:
+      - "goimports -w ."

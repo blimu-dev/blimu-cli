@@ -1,0 +1,11 @@
+organization:create_brand:
+  roles: [admin]
+  plans: [agency]
+organization:archive_brand:
+  roles: [admin]
+  plans: [pro]
+workspace:delete:
+  roles: [admin]
+brand:invite_user:
+  roles: [admin]
+  plans: [pro]
