@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -18,10 +19,16 @@ type CLIConfig struct {
 // Environment represents a single environment configuration
 type Environment struct {
 	Name      string `yaml:"name"`
-	APIKey    string `yaml:"api_key"`
+	APIKey    string `yaml:"api_key,omitempty"`    // Keep for backward compatibility
 	APIURL    string `yaml:"api_url,omitempty"`
 	ID        string `yaml:"id,omitempty"`         // Environment ID from the API
 	LookupKey string `yaml:"lookup_key,omitempty"` // Optional lookup key for the environment
+	
+	// New OAuth fields
+	AccessToken  string     `yaml:"access_token,omitempty"`
+	RefreshToken string     `yaml:"refresh_token,omitempty"`
+	ExpiresAt    *time.Time `yaml:"expires_at,omitempty"`
+	TokenType    string     `yaml:"token_type,omitempty"`
 }
 
 // GetCLIConfigPath returns the path to the CLI configuration file
@@ -196,4 +203,18 @@ func (c *CLIConfig) GetAPIClient() (apiURL, apiKey string, err error) {
 	}
 
 	return apiURL, env.APIKey, nil
+}
+
+// NeedsTokenRefresh checks if the OAuth token needs refresh
+func (e *Environment) NeedsTokenRefresh() bool {
+	if e.AccessToken == "" || e.ExpiresAt == nil {
+		return false
+	}
+	// Refresh if token expires in the next 5 minutes
+	return time.Until(*e.ExpiresAt) < 5*time.Minute
+}
+
+// IsOAuthAuthenticated checks if environment uses OAuth authentication
+func (e *Environment) IsOAuthAuthenticated() bool {
+	return e.AccessToken != "" && e.TokenType == "Bearer"
 }

@@ -21,6 +21,7 @@ func NewAuthCmd() *cobra.Command {
 
 	cobraCmd.AddCommand(NewTestAuthCmd())
 	cobraCmd.AddCommand(NewPushAuthCmd())
+	cobraCmd.AddCommand(NewLoginCmd())
 
 	return cobraCmd
 }
