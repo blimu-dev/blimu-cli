@@ -115,7 +115,6 @@ func (cs *CallbackServer) serveSuccessPage(w http.ResponseWriter) {
 </head>
 <body>
     <div class="container">
-        <div class="success">✅</div>
         <h1>Authentication Successful!</h1>
         <p>You have successfully authenticated with Blimu. You can now close this tab and return to your terminal.</p>
         <script>setTimeout(() => window.close(), 3000);</script>
