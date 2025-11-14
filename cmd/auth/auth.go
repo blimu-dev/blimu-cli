@@ -61,7 +61,7 @@ func (c *TestAuthCommand) Run() error {
 	fmt.Printf("🔐 Testing authentication for environment '%s' with %s...\n", currentEnv.Name, apiURL)
 
 	// Create authenticated client
-	client := auth.NewClient(apiURL, currentEnv.APIKey)
+	client := auth.NewClientWithToken(apiURL, currentEnv.APIKey)
 
 	// Test authentication
 	if err := client.ValidateAuth(); err != nil {

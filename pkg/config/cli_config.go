@@ -19,11 +19,11 @@ type CLIConfig struct {
 // Environment represents a single environment configuration
 type Environment struct {
 	Name      string `yaml:"name"`
-	APIKey    string `yaml:"api_key,omitempty"`    // Keep for backward compatibility
+	APIKey    string `yaml:"api_key,omitempty"` // Keep for backward compatibility
 	APIURL    string `yaml:"api_url,omitempty"`
 	ID        string `yaml:"id,omitempty"`         // Environment ID from the API
 	LookupKey string `yaml:"lookup_key,omitempty"` // Optional lookup key for the environment
-	
+
 	// New OAuth fields
 	AccessToken  string     `yaml:"access_token,omitempty"`
 	RefreshToken string     `yaml:"refresh_token,omitempty"`
@@ -50,7 +50,7 @@ func GetCLIConfigPath() (string, error) {
 func LoadCLIConfig() (*CLIConfig, error) {
 	config := &CLIConfig{
 		Environments:  make(map[string]Environment),
-		DefaultAPIURL: "https://api.blimu.dev",
+		DefaultAPIURL: "https://api.blimu.dev", // Runtime API for OAuth, platform API determined at runtime
 	}
 
 	// Try to load from config file

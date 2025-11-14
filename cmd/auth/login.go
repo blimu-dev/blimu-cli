@@ -32,7 +32,7 @@ func NewLoginCmd() *cobra.Command {
 	}
 
 	cobraCmd.Flags().StringVar(&cmd.Environment, "environment", "env_blimu_platform", "Environment to authenticate with")
-	cobraCmd.Flags().StringVar(&cmd.APIURL, "api-url", "", "API URL (defaults to https://api.blimu.dev)")
+	cobraCmd.Flags().StringVar(&cmd.APIURL, "api-url", "", "Runtime API URL for OAuth (defaults to https://api.blimu.dev)")
 
 	return cobraCmd
 }
@@ -45,13 +45,17 @@ func (c *LoginCommand) Run() error {
 		return fmt.Errorf("failed to load CLI config: %w", err)
 	}
 
-	// Determine API URL
-	apiURL := c.APIURL
-	if apiURL == "" {
-		apiURL = cliConfig.DefaultAPIURL
+	// Determine runtime API URL for OAuth authentication
+	runtimeURL := c.APIURL
+	if runtimeURL == "" {
+		runtimeURL = "https://api.blimu.dev" // Always use runtime API for OAuth
+	}
+	// Override if user explicitly set platform URL
+	if runtimeURL == "https://platform-api.blimu.dev" {
+		runtimeURL = "https://api.blimu.dev"
 	}
 
-	fmt.Printf("🔐 Starting authentication with %s...\n", apiURL)
+	fmt.Printf("🔐 Starting OAuth authentication with %s...\n", runtimeURL)
 
 	// Create callback server
 	server, err := oauth.NewCallbackServer()
@@ -80,11 +84,11 @@ func (c *LoginCommand) Run() error {
 		return fmt.Errorf("failed to generate state: %w", err)
 	}
 
-	// Create OAuth client
+	// Create OAuth client using runtime API
 	oauthConfig := oauth.Config{
 		ClientID:    "blimu_cli",
-		AuthURL:     fmt.Sprintf("%s/v1/%s/oauth/authorize", apiURL, c.Environment),
-		TokenURL:    fmt.Sprintf("%s/v1/%s/oauth/token", apiURL, c.Environment),
+		AuthURL:     fmt.Sprintf("%s/v1/%s/oauth/authorize", runtimeURL, c.Environment),
+		TokenURL:    fmt.Sprintf("%s/v1/%s/oauth/token", runtimeURL, c.Environment),
 		RedirectURI: server.GetRedirectURI(),
 		Scopes: []string{
 			"workspace:read",
@@ -141,7 +145,7 @@ func (c *LoginCommand) Run() error {
 	// Save tokens to config
 	envConfig := config.Environment{
 		Name:         c.Environment,
-		APIURL:       apiURL,
+		APIURL:       "https://platform-api.blimu.dev", // Store platform URL for operations
 		AccessToken:  tokenResp.AccessToken,
 		RefreshToken: tokenResp.RefreshToken,
 		ExpiresAt:    &expiresAt,
@@ -154,7 +158,8 @@ func (c *LoginCommand) Run() error {
 
 	fmt.Printf("✅ Authentication successful!\n")
 	fmt.Printf("   Environment: %s\n", c.Environment)
-	fmt.Printf("   API URL: %s\n", apiURL)
+	fmt.Printf("   OAuth via: %s\n", runtimeURL)
+	fmt.Printf("   Operations via: https://platform-api.blimu.dev\n")
 	fmt.Printf("   Token expires: %s\n", expiresAt.Format(time.RFC3339))
 
 	return nil

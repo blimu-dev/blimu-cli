@@ -26,44 +26,10 @@ func runCurrent(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Get SDK client
-	client, err := shared.GetSDKClient()
-	if err != nil {
-		return fmt.Errorf("failed to get API client: %w", err)
-	}
-
-	// Fetch environment details from API if we have an ID
-	if currentEnv.ID != "" {
-		apiEnv, err := client.Environments.Get(currentEnv.ID)
-		if err != nil {
-			fmt.Printf("Warning: Failed to fetch environment details from API: %v\n\n", err)
-			// Fall back to showing local config only
-		} else {
-			// Show API data (most up-to-date)
-			fmt.Printf("Current environment: %s\n", cliConfig.CurrentEnvironment)
-			fmt.Printf("  Name: %s\n", apiEnv.Name)
-			fmt.Printf("  ID: %s\n", apiEnv.Id)
-			if apiEnv.LookupKey != nil && *apiEnv.LookupKey != "" {
-				fmt.Printf("  Lookup Key: %s\n", *apiEnv.LookupKey)
-			}
-			fmt.Printf("  Workspace ID: %s\n", apiEnv.WorkspaceId)
-			fmt.Printf("  Created: %s\n", apiEnv.CreatedAt)
-			fmt.Printf("  Updated: %s\n", apiEnv.UpdatedAt)
-
-			// Show local configuration
-			fmt.Printf("\nLocal configuration:\n")
-			apiURL := currentEnv.APIURL
-			if apiURL == "" {
-				apiURL = cliConfig.DefaultAPIURL
-			}
-			fmt.Printf("  API URL: %s\n", apiURL)
-
-			return nil
-		}
-	}
-
-	// Fallback: show local configuration only
+	// Show local configuration
 	fmt.Printf("Current environment: %s\n", cliConfig.CurrentEnvironment)
+	fmt.Printf("  Name: %s\n", currentEnv.Name)
+
 	apiURL := currentEnv.APIURL
 	if apiURL == "" {
 		apiURL = cliConfig.DefaultAPIURL
@@ -76,8 +42,25 @@ func runCurrent(cmd *cobra.Command, args []string) error {
 
 	if currentEnv.ID != "" {
 		fmt.Printf("  Environment ID: %s\n", currentEnv.ID)
+	}
+
+	// Show authentication status
+	if currentEnv.IsOAuthAuthenticated() {
+		fmt.Printf("  Authentication: OAuth")
+		if currentEnv.ExpiresAt != nil {
+			fmt.Printf(" (expires: %s)", currentEnv.ExpiresAt.Format("2006-01-02 15:04:05"))
+		}
+		fmt.Printf("\n")
+	} else if currentEnv.APIKey != "" {
+		fmt.Printf("  Authentication: API Key\n")
 	} else {
-		fmt.Printf("  Warning: No environment ID stored locally. Run 'blimu env list' to sync with API.\n")
+		fmt.Printf("  Authentication: None\n")
+	}
+
+	// Note about platform API requirements
+	if currentEnv.ID != "" {
+		fmt.Printf("\n⚠️  Note: Platform API environment details require workspace ID.\n")
+		fmt.Printf("Use 'blimu env create --workspace-id <id>' for full API integration.\n")
 	}
 
 	return nil

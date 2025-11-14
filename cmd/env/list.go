@@ -5,23 +5,34 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/blimu-dev/blimu-cli/pkg/api"
-	"github.com/blimu-dev/blimu-cli/pkg/auth"
 	"github.com/blimu-dev/blimu-cli/pkg/shared"
 	"github.com/spf13/cobra"
 )
 
+// ListCommand represents the list environments command
+type ListCommand struct {
+	WorkspaceID string
+}
+
 // NewListCmd creates the list command
 func NewListCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &ListCommand{}
+
+	cobraCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List environments from API",
 		Long:  `List all environments from the API and show which one is currently active locally`,
-		RunE:  runList,
+		RunE: func(cobraCmd *cobra.Command, args []string) error {
+			return cmd.Run()
+		},
 	}
+
+	cobraCmd.Flags().StringVar(&cmd.WorkspaceID, "workspace-id", "", "Workspace ID (required for platform API)")
+
+	return cobraCmd
 }
 
-func runList(cmd *cobra.Command, args []string) error {
+func (c *ListCommand) Run() error {
 	cliConfig, currentEnv, err := shared.GetCurrentEnvironmentInfo()
 	if err != nil {
 		fmt.Println("No current environment configured.")
@@ -29,59 +40,102 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Get auth client for API operations
-	apiURL := currentEnv.APIURL
-	if apiURL == "" {
-		apiURL = cliConfig.DefaultAPIURL
-	}
-	authClient := auth.NewClient(apiURL, currentEnv.APIKey)
-	apiClient := api.NewClient(authClient)
+	// Check if workspace ID is provided
+	if c.WorkspaceID == "" {
+		fmt.Printf("⚠️  Workspace ID is required for listing environments.\n")
+		fmt.Printf("Use --workspace-id flag or run 'blimu workspaces list' to find your workspace ID.\n")
+		fmt.Printf("Showing local environments only:\n\n")
 
-	// Fetch environments from API
-	apiEnvironments, err := apiClient.ListEnvironments()
+		// Show local environments
+		if len(cliConfig.Environments) == 0 {
+			fmt.Println("No local environments configured.")
+			return nil
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(w, "NAME\tCURRENT\tAUTH\tAPI URL")
+
+		for name, env := range cliConfig.Environments {
+			current := ""
+			if name == cliConfig.CurrentEnvironment {
+				current = "*"
+			}
+
+			authType := "None"
+			if env.IsOAuthAuthenticated() {
+				authType = "OAuth"
+			} else if env.APIKey != "" {
+				authType = "API Key"
+			}
+
+			apiURL := env.APIURL
+			if apiURL == "" {
+				apiURL = cliConfig.DefaultAPIURL
+			}
+
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", name, current, authType, apiURL)
+		}
+
+		w.Flush()
+		return nil
+	}
+
+	// Get platform SDK client
+	client, err := shared.GetSDKClient()
+	if err != nil {
+		return fmt.Errorf("failed to get API client: %w", err)
+	}
+
+	// Fetch environments from platform API
+	apiEnvironments, err := client.Environments.List(c.WorkspaceID, nil)
 	if err != nil {
 		return fmt.Errorf("failed to fetch environments from API: %w", err)
 	}
 
 	if len(apiEnvironments.Data) == 0 {
-		fmt.Println("No environments found in your workspace.")
-		fmt.Println("Create environments via the Blimu dashboard or API.")
+		fmt.Printf("No environments found in workspace %s.\n", c.WorkspaceID)
+		fmt.Println("Create environments via the Blimu dashboard or 'blimu env create'.")
 		return nil
 	}
 
-	fmt.Printf("Available environments:\n\n")
-
+	// Display environments in a table
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tLOOKUP KEY\tWORKSPACE ID\tCREATED\tCURRENT")
+	fmt.Fprintln(w, "NAME\tID\tLOOKUP KEY\tWORKSPACE ID\tCREATED")
 
-	for _, env := range apiEnvironments.Data {
-		current := ""
-		// Check if this environment ID matches the current one in config
-		if currentEnv.ID == env.Id {
-			current = "✓"
-		}
+	for _, envData := range apiEnvironments.Data {
+		// Extract fields from map[string]interface{}
+		name := getStringFromMap(envData, "name")
+		id := getStringFromMap(envData, "id")
+		lookupKey := getStringFromMap(envData, "lookupKey")
+		workspaceId := getStringFromMap(envData, "workspaceId")
+		createdAt := getStringFromMap(envData, "createdAt")
 
-		name := env.Name
-		lookupKey := "-"
-		if env.LookupKey != nil {
-			lookupKey = *env.LookupKey
-		}
-
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-			env.Id, name, lookupKey, env.WorkspaceId, env.CreatedAt, current)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+			name,
+			id,
+			lookupKey,
+			workspaceId,
+			createdAt,
+		)
 	}
 
 	w.Flush()
 
-	// Show local configuration info
-	fmt.Printf("\nLocal configuration:\n")
-	fmt.Printf("  Current environment: %s\n", cliConfig.CurrentEnvironment)
-	fmt.Printf("  API URL: %s\n", func() string {
-		if currentEnv.APIURL != "" {
-			return currentEnv.APIURL
-		}
-		return cliConfig.DefaultAPIURL
-	}())
+	// Show current local environment
+	fmt.Printf("\nCurrent local environment: %s\n", cliConfig.CurrentEnvironment)
+	if currentEnv != nil && currentEnv.ID != "" {
+		fmt.Printf("Local environment ID: %s\n", currentEnv.ID)
+	}
 
 	return nil
+}
+
+// getStringFromMap safely extracts a string value from a map[string]interface{}
+func getStringFromMap(data map[string]interface{}, key string) string {
+	if val, ok := data[key]; ok {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	return ""
 }

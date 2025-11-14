@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/blimu-dev/blimu-cli/pkg/shared"
-	blimu "github.com/blimu-dev/blimu-go"
+	blimu "github.com/blimu-dev/blimu-platform-go"
 	"github.com/spf13/cobra"
 )
 

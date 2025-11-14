@@ -143,7 +143,6 @@ func (cs *CallbackServer) serveErrorPage(w http.ResponseWriter, error, descripti
 </head>
 <body>
     <div class="container">
-        <div class="error">❌</div>
         <h1>Authentication Error</h1>
         <p><strong>Error:</strong> %s</p>
         <p>%s</p>

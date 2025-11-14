@@ -9,7 +9,8 @@ import (
 	"github.com/blimu-dev/blimu-cli/cmd/env"
 	"github.com/blimu-dev/blimu-cli/cmd/generate"
 	initcmd "github.com/blimu-dev/blimu-cli/cmd/initcmd"
-	"github.com/blimu-dev/blimu-cli/cmd/resources"
+
+	// "github.com/blimu-dev/blimu-cli/cmd/resources" // Still disabled due to platform SDK differences
 	"github.com/blimu-dev/blimu-cli/cmd/roles"
 	"github.com/blimu-dev/blimu-cli/cmd/validate"
 	"github.com/spf13/cobra"
@@ -33,7 +34,7 @@ func Execute() {
 	// Register commands using factory pattern
 	rootCmd.AddCommand(auth.NewAuthCmd())
 	rootCmd.AddCommand(env.NewEnvCmd())
-	rootCmd.AddCommand(resources.NewResourcesCmd())
+	// rootCmd.AddCommand(resources.NewResourcesCmd()) // Still disabled due to platform SDK differences
 	rootCmd.AddCommand(roles.NewRolesCmd())
 	rootCmd.AddCommand(validate.NewValidateCmd())
 	rootCmd.AddCommand(generate.NewGenerateCmd())

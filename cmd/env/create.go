@@ -6,16 +6,17 @@ import (
 
 	"github.com/blimu-dev/blimu-cli/pkg/auth"
 	"github.com/blimu-dev/blimu-cli/pkg/config"
-	blimu "github.com/blimu-dev/blimu-go"
+	platform "github.com/blimu-dev/blimu-platform-go"
 	"github.com/spf13/cobra"
 )
 
 // CreateCommand represents the create environment command
 type CreateCommand struct {
-	EnvName   string
-	LookupKey string
-	APIKey    string
-	APIURL    string
+	EnvName     string
+	LookupKey   string
+	WorkspaceID string
+	APIKey      string
+	APIURL      string
 }
 
 // NewCreateCmd creates the create command
@@ -46,6 +47,8 @@ Examples:
 		},
 	}
 
+	cobraCmd.Flags().StringVar(&cmd.LookupKey, "lookup-key", "", "Optional lookup key for the environment")
+	cobraCmd.Flags().StringVar(&cmd.WorkspaceID, "workspace-id", "", "Workspace ID (required for platform API)")
 	cobraCmd.Flags().StringVar(&cmd.APIKey, "api-key", "", "API key for the environment")
 	cobraCmd.Flags().StringVar(&cmd.APIURL, "api-url", "", "API URL for the environment (defaults to https://api.blimu.dev)")
 
@@ -92,17 +95,54 @@ func (c *CreateCommand) Run() error {
 		return fmt.Errorf("API key is required. Provide it via --api-key flag or BLIMU_SECRET_KEY environment variable")
 	}
 
-	// Create SDK client
-	authClient := auth.NewClient(apiURL, apiKey)
-	sdk := authClient.GetSDK()
+	// Create hybrid auth client
+	authClient := auth.NewClientWithToken(apiURL, apiKey)
+	sdk := authClient.GetPlatformSDK()
 
-	// Create environment via API
-	createRequest := blimu.EnvironmentCreateDto{
-		Name:      c.EnvName,
-		LookupKey: c.LookupKey,
+	if sdk == nil {
+		return fmt.Errorf("platform SDK not available")
 	}
 
-	createdEnv, err := sdk.Environments.Create(createRequest)
+	// Check if workspace ID is provided
+	if c.WorkspaceID == "" {
+		fmt.Printf("⚠️  Note: Workspace ID is required for environment creation.\n")
+		fmt.Printf("Use --workspace-id flag or run 'blimu workspaces list' to find your workspace ID.\n")
+		fmt.Printf("Creating local environment configuration only.\n")
+
+		// Create a mock response for local config
+		createdEnv := struct {
+			Id string
+		}{
+			Id: fmt.Sprintf("env_%s", c.EnvName),
+		}
+
+		// Add the created environment to local CLI config
+		env := config.Environment{
+			Name:      c.EnvName,
+			APIKey:    apiKey,        // Use the API key we determined
+			APIURL:    apiURL,        // Use the API URL we determined
+			ID:        createdEnv.Id, // Store the mock ID
+			LookupKey: c.LookupKey,   // Store the lookup key
+		}
+
+		if err := cliConfig.AddEnvironment(c.EnvName, env); err != nil {
+			return fmt.Errorf("failed to add environment to local config: %w", err)
+		}
+
+		fmt.Printf("✅ Created local environment '%s' (ID: %s)\n", c.EnvName, createdEnv.Id)
+		if c.LookupKey != "" {
+			fmt.Printf("   Lookup key: %s\n", c.LookupKey)
+		}
+		return nil
+	}
+
+	// Create environment via platform API
+	createRequest := platform.EnvironmentCreateDto{
+		Name:      c.EnvName,
+		LookupKey: c.LookupKey, // Platform SDK expects string, not *string
+	}
+
+	createdEnv, err := sdk.Environments.Create(c.WorkspaceID, createRequest)
 	if err != nil {
 		return fmt.Errorf("failed to create environment via API: %w", err)
 	}
@@ -124,6 +164,7 @@ func (c *CreateCommand) Run() error {
 	if c.LookupKey != "" {
 		fmt.Printf("   Lookup key: %s\n", c.LookupKey)
 	}
+	fmt.Printf("   Workspace ID: %s\n", c.WorkspaceID)
 	fmt.Printf("   Workspace ID: %s\n", createdEnv.WorkspaceId)
 
 	// If this is the first environment, mention it's now current

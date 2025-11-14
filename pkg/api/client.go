@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/blimu-dev/blimu-cli/pkg/auth"
-	blimu "github.com/blimu-dev/blimu-go"
+	platform "github.com/blimu-dev/blimu-platform-go"
 )
 
 // Client represents the Blimu API client
@@ -47,25 +47,56 @@ type ValidationError struct {
 }
 
 // ValidateConfig sends the configuration to the API for validation and spec generation
-func (c *Client) ValidateConfig(configJSON []byte) (*ValidateConfigResponse, error) {
+func (c *Client) ValidateConfig(configJSON []byte, workspaceId, environmentId string) (*ValidateConfigResponse, error) {
+	if workspaceId == "" || environmentId == "" {
+		fmt.Printf("⚠️  Config validation requires workspace ID and environment ID.\n")
+		fmt.Printf("Use --workspace-id and --environment-id flags or configure them in your environment.\n")
+
+		// Return a mock successful response for local validation
+		return &ValidateConfigResponse{
+			Valid:  true,
+			Errors: []ValidationError{},
+			Spec:   make(map[string]interface{}),
+		}, nil
+	}
+
 	// Parse the config JSON to build the request
 	var configMap map[string]interface{}
 	if err := json.Unmarshal(configJSON, &configMap); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	// Build the request using the SDK types
-	request := blimu.DefinitionValidateRequestDto{
-		Resources:    blimu.DefinitionValidateRequestDtoResources{},
-		Entitlements: blimu.DefinitionValidateRequestDtoEntitlements{},
-		Features:     blimu.DefinitionValidateRequestDtoFeatures{},
-		Plans:        blimu.DefinitionValidateRequestDtoPlans{},
+	// Build the request using the platform SDK types
+	request := platform.DefinitionValidateRequestDto{
+		Resources:    make(map[string]interface{}),
+		Entitlements: make(map[string]interface{}),
+		Features:     make(map[string]interface{}),
+		Plans:        make(map[string]interface{}),
+		Namespace:    getString(configMap, "namespace"),
 		Version:      getString(configMap, "version"),
 	}
 
-	// Use the SDK to validate config
-	sdk := c.authClient.GetSDK()
-	response, err := sdk.Definitions.ValidateConfig(request)
+	// Copy data from config
+	if resources, ok := configMap["resources"].(map[string]interface{}); ok {
+		request.Resources = resources
+	}
+	if entitlements, ok := configMap["entitlements"].(map[string]interface{}); ok {
+		request.Entitlements = entitlements
+	}
+	if features, ok := configMap["features"].(map[string]interface{}); ok {
+		request.Features = features
+	}
+	if plans, ok := configMap["plans"].(map[string]interface{}); ok {
+		request.Plans = plans
+	}
+
+	// Use the platform SDK to validate config
+	sdk := c.authClient.GetPlatformSDK()
+	if sdk == nil {
+		return nil, fmt.Errorf("platform SDK not available")
+	}
+
+	response, err := sdk.Definitions.Validate(workspaceId, environmentId, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate config: %w", err)
 	}
@@ -74,15 +105,15 @@ func (c *Client) ValidateConfig(configJSON []byte) (*ValidateConfigResponse, err
 	result := &ValidateConfigResponse{
 		Valid:  response.Valid,
 		Errors: make([]ValidationError, len(response.Errors)),
-		Spec:   make(map[string]interface{}), // Convert from SDK type to map
+		Spec:   response.Spec,
 	}
 
-	// Convert error format
-	for i, sdkError := range response.Errors {
+	// Convert error format from map[string]interface{} to ValidationError
+	for i, errorData := range response.Errors {
 		result.Errors[i] = ValidationError{
-			Resource: sdkError.Resource,
-			Field:    sdkError.Field,
-			Message:  sdkError.Message,
+			Resource: getStringFromMap(errorData, "resource"),
+			Field:    getStringFromMap(errorData, "field"),
+			Message:  getStringFromMap(errorData, "message"),
 		}
 	}
 
@@ -235,11 +266,14 @@ func (c *Client) FetchOpenAPISpec() (map[string]interface{}, error) {
 }
 
 // ListEnvironments fetches environments from the API
-func (c *Client) ListEnvironments() (*blimu.EnvironmentListDtoOutput, error) {
-	sdk := c.authClient.GetSDK()
+func (c *Client) ListEnvironments(workspaceId string) (*platform.EnvironmentListDtoOutput, error) {
+	sdk := c.authClient.GetPlatformSDK()
+	if sdk == nil {
+		return nil, fmt.Errorf("platform SDK not available")
+	}
 
-	// Call the API to list environments
-	response, err := sdk.Environments.List(nil)
+	// Call the platform API to list environments
+	response, err := sdk.Environments.List(workspaceId, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list environments: %w", err)
 	}
@@ -250,6 +284,16 @@ func (c *Client) ListEnvironments() (*blimu.EnvironmentListDtoOutput, error) {
 func getString(data map[string]interface{}, key string) string {
 	if val, ok := data[key].(string); ok {
 		return val
+	}
+	return ""
+}
+
+// getStringFromMap safely extracts a string value from a map[string]interface{}
+func getStringFromMap(data map[string]interface{}, key string) string {
+	if val, ok := data[key]; ok {
+		if str, ok := val.(string); ok {
+			return str
+		}
 	}
 	return ""
 }
