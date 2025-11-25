@@ -30,10 +30,10 @@ func GetSDKClientWithDevMode(devMode bool) (*platform.Client, error) {
 	}
 
 	// Determine platform API URL
-	platformURL := "https://platform-api.blimu.dev"
+	platformURL := "https://app-api-42118893108.us-central1.run.app"
 	if devMode {
 		platformURL = "http://localhost:3010"
-	} else if currentEnv.APIURL != "" && currentEnv.APIURL != "https://api.blimu.dev" {
+	} else if currentEnv.APIURL != "" && currentEnv.APIURL != "https://blimu-api-42118893108.us-central1.run.app" {
 		// If user has custom platform URL configured
 		platformURL = currentEnv.APIURL
 	}
@@ -85,10 +85,10 @@ func GetAuthClientWithDevMode(devMode bool) (*auth.Client, error) {
 	}
 
 	// Determine platform API URL
-	platformURL := "https://platform-api.blimu.dev"
+	platformURL := "https://app-api-42118893108.us-central1.run.app"
 	if devMode {
 		platformURL = "http://localhost:3010"
-	} else if currentEnv.APIURL != "" && currentEnv.APIURL != "https://api.blimu.dev" {
+	} else if currentEnv.APIURL != "" && currentEnv.APIURL != "https://blimu-api-42118893108.us-central1.run.app" {
 		// If user has custom platform URL configured
 		platformURL = currentEnv.APIURL
 	}

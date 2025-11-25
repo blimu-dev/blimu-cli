@@ -137,7 +137,7 @@ After generating your SDK, you can use it like this:
 import { BlimuClient } from "./blimu-client";
 
 const client = new BlimuClient({
-  baseURL: "https://api.blimu.dev",
+  baseURL: "https://blimu-api-42118893108.us-central1.run.app",
   bearerToken: "your-oauth-token",
 });
 

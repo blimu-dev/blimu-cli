@@ -32,7 +32,7 @@ func NewLoginCmd() *cobra.Command {
 		},
 	}
 
-	cobraCmd.Flags().StringVar(&cmd.APIURL, "api-url", "", "Platform API URL for OAuth (defaults to https://platform-api.blimu.dev)")
+	cobraCmd.Flags().StringVar(&cmd.APIURL, "api-url", "", "Platform API URL for OAuth (defaults to https://app-api-42118893108.us-central1.run.app)")
 
 	return cobraCmd
 }
@@ -49,7 +49,7 @@ func (c *LoginCommand) Run(cmd *cobra.Command) error {
 	devMode, _ := cmd.Flags().GetBool("dev")
 
 	// Use platform API OAuth endpoints (which proxy to Clerk internally)
-	platformURL := "https://platform-api.blimu.dev"
+	platformURL := "https://app-api-42118893108.us-central1.run.app"
 	if devMode {
 		platformURL = "http://localhost:3010"
 	} else if c.APIURL != "" {

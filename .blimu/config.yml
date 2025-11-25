@@ -1,5 +1,5 @@
 name: "Blimu CLI SDKs"
-baseURL: "https://api.blimu.dev"
+baseURL: "https://blimu-api-42118893108.us-central1.run.app"
 
 clients:
   - type: typescript
