@@ -3,66 +3,40 @@ package auth
 import (
 	"fmt"
 
-	runtime "github.com/blimu-dev/blimu-go"
 	platform "github.com/blimu-dev/blimu-platform-go"
 )
 
-// Client represents a hybrid Blimu client that uses runtime SDK for auth and platform SDK for operations
+// Client represents a Blimu client that uses Clerk OAuth and platform SDK for operations
 type Client struct {
-	runtimeSDK  *runtime.Client  // For OAuth authentication
 	platformSDK *platform.Client // For CLI operations
 	baseURL     string
-	token       string // JWT token from OAuth
+	token       string // JWT token from Clerk OAuth
 }
 
-// NewClientWithOAuth creates a new client for OAuth authentication using runtime SDK
-func NewClientWithOAuth(runtimeBaseURL string) *Client {
-	runtimeSDK := runtime.NewClient(
-		runtime.WithBaseURL(runtimeBaseURL),
-	)
-
+// NewClientWithClerkOAuth creates a new client for Clerk OAuth authentication
+func NewClientWithClerkOAuth(clerkDomain string) *Client {
 	return &Client{
-		runtimeSDK: runtimeSDK,
-		baseURL:    runtimeBaseURL,
+		baseURL: clerkDomain,
 	}
 }
 
-// NewClientWithToken creates a new client with JWT token for platform operations
-func NewClientWithToken(platformBaseURL, token string) *Client {
+// NewClientWithClerkToken creates a client with Clerk JWT token for platform operations
+func NewClientWithClerkToken(platformBaseURL, clerkToken string) *Client {
 	platformSDK := platform.NewClient(
 		platform.WithBaseURL(platformBaseURL),
-		platform.WithBearer(token),
+		platform.WithBearer(clerkToken),
 	)
 
 	return &Client{
 		platformSDK: platformSDK,
 		baseURL:     platformBaseURL,
-		token:       token,
+		token:       clerkToken,
 	}
 }
 
-// NewHybridClient creates a client that can do both OAuth (runtime) and operations (platform)
-func NewHybridClient(runtimeBaseURL, platformBaseURL, token string) *Client {
-	runtimeSDK := runtime.NewClient(
-		runtime.WithBaseURL(runtimeBaseURL),
-	)
-
-	platformSDK := platform.NewClient(
-		platform.WithBaseURL(platformBaseURL),
-		platform.WithBearer(token),
-	)
-
-	return &Client{
-		runtimeSDK:  runtimeSDK,
-		platformSDK: platformSDK,
-		baseURL:     platformBaseURL, // Use platform URL as primary
-		token:       token,
-	}
-}
-
-// GetRuntimeSDK returns the runtime SDK for OAuth operations
-func (c *Client) GetRuntimeSDK() *runtime.Client {
-	return c.runtimeSDK
+// GetClerkToken returns the Clerk JWT token
+func (c *Client) GetClerkToken() string {
+	return c.token
 }
 
 // GetPlatformSDK returns the platform SDK for CLI operations
@@ -100,9 +74,4 @@ func (c *Client) ValidateAuth() error {
 // GetSDK returns the platform SDK (for backward compatibility)
 func (c *Client) GetSDK() *platform.Client {
 	return c.platformSDK
-}
-
-// GetAPIKey returns the token (for backward compatibility)
-func (c *Client) GetAPIKey() string {
-	return c.token
 }

@@ -18,13 +18,12 @@ type CLIConfig struct {
 
 // Environment represents a single environment configuration
 type Environment struct {
-	Name      string `yaml:"name"`
-	APIKey    string `yaml:"api_key,omitempty"` // Keep for backward compatibility
-	APIURL    string `yaml:"api_url,omitempty"`
-	ID        string `yaml:"id,omitempty"`         // Environment ID from the API
-	LookupKey string `yaml:"lookup_key,omitempty"` // Optional lookup key for the environment
+	APIURL      string `yaml:"api_url,omitempty"`
+	ID          string `yaml:"id,omitempty"`           // Environment ID from the API
+	WorkspaceID string `yaml:"workspace_id,omitempty"` // Workspace ID from the API
+	LookupKey   string `yaml:"lookup_key,omitempty"`   // Optional lookup key for the environment
 
-	// New OAuth fields
+	// OAuth fields
 	AccessToken  string     `yaml:"access_token,omitempty"`
 	RefreshToken string     `yaml:"refresh_token,omitempty"`
 	ExpiresAt    *time.Time `yaml:"expires_at,omitempty"`
@@ -70,25 +69,8 @@ func LoadCLIConfig() (*CLIConfig, error) {
 		}
 	}
 
-	// Override with environment variables if present
-	if apiKey := os.Getenv("BLIMU_SECRET_KEY"); apiKey != "" {
-		envName := "default"
-		if config.CurrentEnvironment == "" {
-			config.CurrentEnvironment = envName
-		}
-
-		env := config.Environments[envName]
-		env.Name = envName
-		env.APIKey = apiKey
-
-		if apiURL := os.Getenv("BLIMU_API_URL"); apiURL != "" {
-			env.APIURL = apiURL
-		} else if env.APIURL == "" {
-			env.APIURL = config.DefaultAPIURL
-		}
-
-		config.Environments[envName] = env
-	}
+	// Note: API key environment variable support has been removed
+	// Only OAuth authentication is supported now
 
 	// Set default current environment if none set
 	if config.CurrentEnvironment == "" && len(config.Environments) > 0 {
@@ -145,17 +127,16 @@ func (c *CLIConfig) SetCurrentEnvironment(name string) error {
 }
 
 // AddEnvironment adds or updates an environment
-func (c *CLIConfig) AddEnvironment(name string, env Environment) error {
+func (c *CLIConfig) AddEnvironment(env Environment) error {
 	if c.Environments == nil {
 		c.Environments = make(map[string]Environment)
 	}
 
-	env.Name = name
-	c.Environments[name] = env
+	c.Environments[env.ID] = env
 
 	// Set as current if it's the first environment
 	if c.CurrentEnvironment == "" {
-		c.CurrentEnvironment = name
+		c.CurrentEnvironment = env.ID
 	}
 
 	return c.Save()
@@ -184,25 +165,6 @@ func (c *CLIConfig) RemoveEnvironment(name string) error {
 // ListEnvironments returns all configured environments
 func (c *CLIConfig) ListEnvironments() map[string]Environment {
 	return c.Environments
-}
-
-// GetAPIClient returns the API configuration for the current environment
-func (c *CLIConfig) GetAPIClient() (apiURL, apiKey string, err error) {
-	env, err := c.GetCurrentEnvironment()
-	if err != nil {
-		return "", "", err
-	}
-
-	apiURL = env.APIURL
-	if apiURL == "" {
-		apiURL = c.DefaultAPIURL
-	}
-
-	if env.APIKey == "" {
-		return "", "", fmt.Errorf("no API key configured for environment '%s'", c.CurrentEnvironment)
-	}
-
-	return apiURL, env.APIKey, nil
 }
 
 // NeedsTokenRefresh checks if the OAuth token needs refresh

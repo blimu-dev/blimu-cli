@@ -14,6 +14,11 @@ import (
 
 // GetSDKClient returns a configured platform SDK client using the current environment
 func GetSDKClient() (*platform.Client, error) {
+	return GetSDKClientWithDevMode(false)
+}
+
+// GetSDKClientWithDevMode returns a configured platform SDK client with optional dev mode
+func GetSDKClientWithDevMode(devMode bool) (*platform.Client, error) {
 	cliConfig, err := config.LoadCLIConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load CLI config: %w", err)
@@ -26,25 +31,24 @@ func GetSDKClient() (*platform.Client, error) {
 
 	// Determine platform API URL
 	platformURL := "https://platform-api.blimu.dev"
-	if currentEnv.APIURL != "" && currentEnv.APIURL != "https://api.blimu.dev" {
+	if devMode {
+		platformURL = "http://localhost:3010"
+	} else if currentEnv.APIURL != "" && currentEnv.APIURL != "https://api.blimu.dev" {
 		// If user has custom platform URL configured
 		platformURL = currentEnv.APIURL
 	}
 
-	// Check if we have OAuth tokens
+	// Check if we have Clerk OAuth tokens
 	if currentEnv.IsOAuthAuthenticated() {
 		// Check if token needs refresh
 		if currentEnv.NeedsTokenRefresh() && currentEnv.RefreshToken != "" {
-			// Use runtime API for token refresh
-			runtimeURL := "https://api.blimu.dev"
-			if err := refreshTokens(cliConfig, currentEnv, runtimeURL); err != nil {
-				fmt.Printf("⚠️  Failed to refresh token: %v\n", err)
-				fmt.Printf("Please run 'blimu auth login' to re-authenticate\n")
-				return nil, err
-			}
+			// TODO: Implement Clerk token refresh
+			fmt.Printf("⚠️  Token refresh not yet implemented for Clerk OAuth.\n")
+			fmt.Printf("Please run 'blimu auth login' to re-authenticate\n")
+			return nil, fmt.Errorf("token expired, please re-authenticate")
 		}
 
-		// Use Bearer token authentication with platform SDK
+		// Use Clerk JWT token with platform SDK
 		client := platform.NewClient(
 			platform.WithBaseURL(platformURL),
 			platform.WithBearer(currentEnv.AccessToken),
@@ -52,20 +56,16 @@ func GetSDKClient() (*platform.Client, error) {
 		return client, nil
 	}
 
-	// Fallback to API key authentication (legacy support)
-	if currentEnv.APIKey != "" {
-		client := platform.NewClient(
-			platform.WithBaseURL(platformURL),
-			platform.WithApiKeyAuth(currentEnv.APIKey),
-		)
-		return client, nil
-	}
-
-	return nil, fmt.Errorf("no valid authentication found. Please run 'blimu auth login' or configure an API key")
+	return nil, fmt.Errorf("no valid authentication found. Please run 'blimu auth login' to authenticate")
 }
 
 // GetAuthClient returns a configured auth client using the current environment
 func GetAuthClient() (*auth.Client, error) {
+	return GetAuthClientWithDevMode(false)
+}
+
+// GetAuthClientWithDevMode returns a configured auth client with optional dev mode
+func GetAuthClientWithDevMode(devMode bool) (*auth.Client, error) {
 	cliConfig, err := config.LoadCLIConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load CLI config: %w", err)
@@ -76,41 +76,30 @@ func GetAuthClient() (*auth.Client, error) {
 		return nil, fmt.Errorf("no current environment configured. Please configure an environment first")
 	}
 
-	// Determine URLs
-	runtimeURL := "https://api.blimu.dev"
+	// Determine platform API URL
 	platformURL := "https://platform-api.blimu.dev"
-
-	if currentEnv.APIURL != "" {
-		// If user has custom URLs configured
-		if currentEnv.APIURL == "https://api.blimu.dev" {
-			// Legacy runtime URL, use defaults
-		} else {
-			// Custom platform URL
-			platformURL = currentEnv.APIURL
-		}
+	if devMode {
+		platformURL = "http://localhost:3010"
+	} else if currentEnv.APIURL != "" && currentEnv.APIURL != "https://api.blimu.dev" {
+		// If user has custom platform URL configured
+		platformURL = currentEnv.APIURL
 	}
 
-	// Check if we have OAuth tokens
+	// Check if we have Clerk OAuth tokens
 	if currentEnv.IsOAuthAuthenticated() {
 		// Check if token needs refresh
 		if currentEnv.NeedsTokenRefresh() && currentEnv.RefreshToken != "" {
-			if err := refreshTokens(cliConfig, currentEnv, runtimeURL); err != nil {
-				fmt.Printf("⚠️  Failed to refresh token: %v\n", err)
-				fmt.Printf("Please run 'blimu auth login' to re-authenticate\n")
-				return nil, err
-			}
+			// TODO: Implement Clerk token refresh
+			fmt.Printf("⚠️  Token refresh not yet implemented for Clerk OAuth.\n")
+			fmt.Printf("Please run 'blimu auth login' to re-authenticate\n")
+			return nil, fmt.Errorf("token expired, please re-authenticate")
 		}
 
-		// Create hybrid client (runtime for auth, platform for operations)
-		return auth.NewHybridClient(runtimeURL, platformURL, currentEnv.AccessToken), nil
+		// Create client with Clerk token for platform operations
+		return auth.NewClientWithClerkToken(platformURL, currentEnv.AccessToken), nil
 	}
 
-	// Fallback to API key authentication (legacy support)
-	if currentEnv.APIKey != "" {
-		return auth.NewClientWithToken(platformURL, currentEnv.APIKey), nil
-	}
-
-	return nil, fmt.Errorf("no valid authentication found. Please run 'blimu auth login' or configure an API key")
+	return nil, fmt.Errorf("no valid authentication found. Please run 'blimu auth login' to authenticate")
 }
 
 // GetCurrentEnvironmentInfo returns the current environment configuration and metadata
@@ -132,7 +121,7 @@ func GetCurrentEnvironmentInfo() (*config.CLIConfig, *config.Environment, error)
 func refreshTokens(cliConfig *config.CLIConfig, env *config.Environment, apiURL string) error {
 	oauthConfig := oauth.Config{
 		ClientID: "blimu_cli",
-		TokenURL: fmt.Sprintf("%s/v1/%s/oauth/token", apiURL, env.Name),
+		TokenURL: fmt.Sprintf("%s/v1/%s/oauth/token", apiURL, env.ID),
 	}
 
 	oauthClient := oauth.NewClient(oauthConfig)
@@ -153,5 +142,5 @@ func refreshTokens(cliConfig *config.CLIConfig, env *config.Environment, apiURL 
 	}
 	env.ExpiresAt = &expiresAt
 
-	return cliConfig.AddEnvironment(env.Name, *env)
+	return cliConfig.AddEnvironment(*env)
 }

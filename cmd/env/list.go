@@ -64,8 +64,6 @@ func (c *ListCommand) Run() error {
 			authType := "None"
 			if env.IsOAuthAuthenticated() {
 				authType = "OAuth"
-			} else if env.APIKey != "" {
-				authType = "API Key"
 			}
 
 			apiURL := env.APIURL

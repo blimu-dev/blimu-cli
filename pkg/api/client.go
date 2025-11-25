@@ -72,7 +72,6 @@ func (c *Client) ValidateConfig(configJSON []byte, workspaceId, environmentId st
 		Entitlements: make(map[string]interface{}),
 		Features:     make(map[string]interface{}),
 		Plans:        make(map[string]interface{}),
-		Namespace:    getString(configMap, "namespace"),
 		Version:      getString(configMap, "version"),
 	}
 
@@ -178,7 +177,7 @@ func (c *Client) GenerateSDK(configJSON []byte, options SDKGenerationOptions) (*
 
 	// Set headers
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+c.authClient.GetAPIKey())
+	httpReq.Header.Set("Authorization", "Bearer "+c.authClient.GetToken())
 
 	// Make the request
 	client := &http.Client{}
@@ -279,6 +278,38 @@ func (c *Client) ListEnvironments(workspaceId string) (*platform.EnvironmentList
 	}
 
 	return &response, nil
+}
+
+// GetOpenAPIFromDb fetches OpenAPI spec from database definitions using platform SDK
+func (c *Client) GetOpenAPIFromDb(workspaceId, environmentId string) (*GenerateSDKResponse, error) {
+	// Get platform SDK client
+	sdk := c.authClient.GetPlatformSDK()
+	if sdk == nil {
+		return nil, fmt.Errorf("platform SDK not available")
+	}
+
+	// Use platform SDK to get OpenAPI spec
+	response, err := sdk.Definitions.GetOpenApi(workspaceId, environmentId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get OpenAPI spec: %w", err)
+	}
+
+	// Convert platform SDK response to our response format
+	result := &GenerateSDKResponse{
+		Success: response.Success,
+		Spec:    response.Spec,
+		Errors:  make([]ValidationError, len(response.Errors)),
+	}
+
+	for i, apiError := range response.Errors {
+		result.Errors[i] = ValidationError{
+			Resource: getStringFromMap(apiError, "resource"),
+			Field:    getStringFromMap(apiError, "field"),
+			Message:  getStringFromMap(apiError, "message"),
+		}
+	}
+
+	return result, nil
 }
 
 func getString(data map[string]interface{}, key string) string {

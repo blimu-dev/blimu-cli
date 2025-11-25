@@ -21,12 +21,26 @@ type CallbackResult struct {
 }
 
 func NewCallbackServer() (*CallbackServer, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create listener: %w", err)
-	}
+	return NewCallbackServerWithPort(8080) // Default to port 8080
+}
 
-	port := listener.Addr().(*net.TCPAddr).Port
+func NewCallbackServerWithPort(port int) (*CallbackServer, error) {
+	address := fmt.Sprintf("127.0.0.1:%d", port)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		// If the preferred port is busy, try a few alternatives
+		for altPort := port + 1; altPort <= port+10; altPort++ {
+			altAddress := fmt.Sprintf("127.0.0.1:%d", altPort)
+			listener, err = net.Listen("tcp", altAddress)
+			if err == nil {
+				port = altPort
+				break
+			}
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to create listener on port %d or alternatives: %w", port, err)
+		}
+	}
 	codeChan := make(chan CallbackResult, 1)
 
 	mux := http.NewServeMux()
@@ -48,6 +62,10 @@ func NewCallbackServer() (*CallbackServer, error) {
 
 func (cs *CallbackServer) GetRedirectURI() string {
 	return fmt.Sprintf("http://127.0.0.1:%d/callback", cs.port)
+}
+
+func (cs *CallbackServer) GetPort() int {
+	return cs.port
 }
 
 func (cs *CallbackServer) Start(ctx context.Context) error {

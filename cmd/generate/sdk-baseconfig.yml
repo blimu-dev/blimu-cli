@@ -1,0 +1,18 @@
+typescript-types:
+  packageName: "@blimu/backend" # not used
+  name: "Blimu" # not used
+  typeAugmentation:
+    moduleName: "@blimu/backend"
+    namespace: "Schema"
+    outputFileName: "blimu-types.d.ts"
+
+typescript:
+  packageName: "@blimu/backend"
+  name: "Blimu"
+  postCommand: ["npx", "prettier", "--write", "."]
+
+go:
+  packageName: "github.com/blimu-dev/blimu-go"
+  moduleName: "github.com/blimu-dev/blimu-go"
+  name: "Blimu"
+  postCommand: ["goimports", "-w", "."]

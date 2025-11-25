@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/blimu-dev/blimu-cli/pkg/auth"
 	"github.com/blimu-dev/blimu-cli/pkg/shared"
@@ -36,8 +37,8 @@ func NewTestAuthCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "test",
 		Short: "Test authentication with Blimu API",
-		Long: `Test your authentication credentials with the Blimu API.
-Requires BLIMU_SECRET_KEY environment variable to be set.`,
+		Long: `Test your OAuth authentication credentials with the Blimu API.
+Requires authentication via 'blimu auth login'.`,
 		RunE: func(cobraCmd *cobra.Command, args []string) error {
 			return cmd.Run()
 		},
@@ -58,10 +59,15 @@ func (c *TestAuthCommand) Run() error {
 		apiURL = cliConfig.DefaultAPIURL
 	}
 
-	fmt.Printf("🔐 Testing authentication for environment '%s' with %s...\n", currentEnv.Name, apiURL)
+	fmt.Printf("🔐 Testing authentication for environment '%s' with %s...\n", currentEnv.ID, apiURL)
+
+	// Check if OAuth authenticated
+	if !currentEnv.IsOAuthAuthenticated() {
+		return fmt.Errorf("no OAuth authentication found. Please run 'blimu auth login' to authenticate")
+	}
 
 	// Create authenticated client
-	client := auth.NewClientWithToken(apiURL, currentEnv.APIKey)
+	client := auth.NewClientWithClerkToken(apiURL, currentEnv.AccessToken)
 
 	// Test authentication
 	if err := client.ValidateAuth(); err != nil {
@@ -69,11 +75,12 @@ func (c *TestAuthCommand) Run() error {
 	}
 
 	fmt.Println("✅ Authentication successful!")
-	fmt.Printf("   Environment: %s\n", currentEnv.Name)
+	fmt.Printf("   Environment: %s\n", currentEnv.ID)
 	fmt.Printf("   API URL: %s\n", apiURL)
-	fmt.Printf("   API Key: %s...%s\n",
-		currentEnv.APIKey[:8],
-		currentEnv.APIKey[len(currentEnv.APIKey)-4:])
+	fmt.Printf("   Authentication: OAuth (Clerk)\n")
+	if currentEnv.ExpiresAt != nil {
+		fmt.Printf("   Token expires: %s\n", currentEnv.ExpiresAt.Format(time.RFC3339))
+	}
 
 	return nil
 }
@@ -130,7 +137,7 @@ func (c *PushAuthCommand) Run() error {
 		return err
 	}
 
-	fmt.Printf("🚀 Pushing .blimu configuration from '%s' to environment '%s'...\n", c.Directory, currentEnv.Name)
+	fmt.Printf("🚀 Pushing .blimu configuration from '%s' to environment '%s'...\n", c.Directory, currentEnv.ID)
 
 	// TODO: Implement the push logic using the SDK client
 	// This would involve:

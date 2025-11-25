@@ -14,11 +14,11 @@ import (
 )
 
 type Config struct {
-	ClientID     string
-	AuthURL      string
-	TokenURL     string
-	RedirectURI  string
-	Scopes       []string
+	ClientID    string
+	AuthURL     string
+	TokenURL    string
+	RedirectURI string
+	Scopes      []string
 }
 
 type TokenResponse struct {
@@ -46,11 +46,11 @@ func NewClient(config Config) *Client {
 func (c *Client) GetAuthorizationURL(state, codeChallenge string) string {
 	params := url.Values{
 		"response_type":         {"code"},
-		"client_id":            {c.config.ClientID},
-		"redirect_uri":         {c.config.RedirectURI},
-		"scope":                {strings.Join(c.config.Scopes, " ")},
-		"state":                {state},
-		"code_challenge":       {codeChallenge},
+		"client_id":             {c.config.ClientID},
+		"redirect_uri":          {c.config.RedirectURI},
+		"scope":                 {strings.Join(c.config.Scopes, " ")},
+		"state":                 {state},
+		"code_challenge":        {codeChallenge},
 		"code_challenge_method": {"S256"},
 	}
 
@@ -59,11 +59,11 @@ func (c *Client) GetAuthorizationURL(state, codeChallenge string) string {
 
 func (c *Client) ExchangeCodeForTokens(ctx context.Context, code, codeVerifier string) (*TokenResponse, error) {
 	data := url.Values{
-		"grant_type":     {"authorization_code"},
-		"client_id":      {c.config.ClientID},
-		"code":           {code},
-		"redirect_uri":   {c.config.RedirectURI},
-		"code_verifier":  {codeVerifier},
+		"grant_type":    {"authorization_code"},
+		"client_id":     {c.config.ClientID},
+		"code":          {code},
+		"redirect_uri":  {c.config.RedirectURI},
+		"code_verifier": {codeVerifier},
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", c.config.TokenURL, strings.NewReader(data.Encode()))
@@ -85,7 +85,8 @@ func (c *Client) ExchangeCodeForTokens(ctx context.Context, code, codeVerifier s
 		return nil, fmt.Errorf("failed to read token response: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	// Accept both 200 OK and 201 Created as success statuses
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return nil, fmt.Errorf("token exchange failed with status %d: %s", resp.StatusCode, string(body))
 	}
 

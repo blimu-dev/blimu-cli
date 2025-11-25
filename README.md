@@ -65,15 +65,16 @@ blimucli validate
 
 ### 4. Set up authentication
 
+Authenticate using OAuth:
+
 ```bash
-export BLIMU_SECRET_KEY="your-api-key"
-export BLIMU_API_URL="https://api.blimu.dev"  # optional
+blimu auth login
 ```
 
 Test your authentication:
 
 ```bash
-blimucli auth test
+blimu auth test
 ```
 
 ### 5. Generate your custom SDK
@@ -115,14 +116,18 @@ Generate a custom SDK based on your resource configuration.
 - `--type, -t`: SDK type, currently only `typescript` (default: `typescript`)
 - `--force, -f`: Force generation even if output directory exists
 
-### `blimucli auth test`
+### `blimu auth login`
 
-Test authentication with the Blimu API.
+Authenticate with Blimu using OAuth (Clerk).
 
-## Environment Variables
+**Options:**
 
-- `BLIMU_SECRET_KEY`: Your Blimu API key (required)
-- `BLIMU_API_URL`: Blimu API URL (default: `https://api.blimu.dev`)
+- `--environment`: Environment to authenticate with (default: `env_blimu_platform`)
+- `--api-url`: Clerk domain for OAuth (default: `https://clerk.blimu.dev`)
+
+### `blimu auth test`
+
+Test your OAuth authentication with the Blimu API.
 
 ## Generated SDK Usage
 
@@ -133,7 +138,7 @@ import { BlimuClient } from "./blimu-client";
 
 const client = new BlimuClient({
   baseURL: "https://api.blimu.dev",
-  apiKey: "your-api-key",
+  bearerToken: "your-oauth-token",
 });
 
 // Use your custom resources

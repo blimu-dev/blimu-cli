@@ -13,7 +13,7 @@ func NewResourcesCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(NewCreateCmd())
-	cmd.AddCommand(NewBulkCmd())
+	// cmd.AddCommand(NewBulkCmd()) // Temporarily disabled - needs SDK update
 
 	return cmd
 }

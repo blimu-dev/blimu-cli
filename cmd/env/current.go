@@ -28,7 +28,6 @@ func runCurrent(cmd *cobra.Command, args []string) error {
 
 	// Show local configuration
 	fmt.Printf("Current environment: %s\n", cliConfig.CurrentEnvironment)
-	fmt.Printf("  Name: %s\n", currentEnv.Name)
 
 	apiURL := currentEnv.APIURL
 	if apiURL == "" {
@@ -44,6 +43,10 @@ func runCurrent(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  Environment ID: %s\n", currentEnv.ID)
 	}
 
+	if currentEnv.WorkspaceID != "" {
+		fmt.Printf("  Workspace ID: %s\n", currentEnv.WorkspaceID)
+	}
+
 	// Show authentication status
 	if currentEnv.IsOAuthAuthenticated() {
 		fmt.Printf("  Authentication: OAuth")
@@ -51,10 +54,8 @@ func runCurrent(cmd *cobra.Command, args []string) error {
 			fmt.Printf(" (expires: %s)", currentEnv.ExpiresAt.Format("2006-01-02 15:04:05"))
 		}
 		fmt.Printf("\n")
-	} else if currentEnv.APIKey != "" {
-		fmt.Printf("  Authentication: API Key\n")
 	} else {
-		fmt.Printf("  Authentication: None\n")
+		fmt.Printf("  Authentication: None (run 'blimu auth login')\n")
 	}
 
 	// Note about platform API requirements
