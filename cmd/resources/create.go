@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	blimu "github.com/blimu-dev/blimu-cli/internal/sdk"
 	"github.com/blimu-dev/blimu-cli/pkg/shared"
-	blimu "github.com/blimu-dev/blimu-platform-go"
 	"github.com/spf13/cobra"
 )
 

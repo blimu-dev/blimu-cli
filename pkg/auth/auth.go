@@ -3,7 +3,7 @@ package auth
 import (
 	"fmt"
 
-	platform "github.com/blimu-dev/blimu-platform-go"
+	platform "github.com/blimu-dev/blimu-cli/internal/sdk"
 )
 
 // Client represents a Blimu client that uses Clerk OAuth and platform SDK for operations

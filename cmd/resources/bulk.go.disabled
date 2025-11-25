@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/blimu-dev/blimu-cli/pkg/shared"
-	blimu "github.com/blimu-dev/blimu-platform-go"
+	blimu "github.com/blimu-dev/blimu-cli/internal/sdk"
 	"github.com/spf13/cobra"
 )
 

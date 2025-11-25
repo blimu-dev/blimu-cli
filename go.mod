@@ -2,15 +2,8 @@ module github.com/blimu-dev/blimu-cli
 
 go 1.25
 
-replace github.com/blimu-dev/sdk-gen => ../sdk-gen
-
-replace github.com/blimu-dev/blimu-go => ../blimu-go
-
-replace github.com/blimu-dev/blimu-platform-go => ../blimu-platform-go
-
 require (
-	github.com/blimu-dev/blimu-platform-go v0.0.0-00010101000000-000000000000
-	github.com/blimu-dev/sdk-gen v0.0.0-00010101000000-000000000000
+	github.com/blimu-dev/sdk-gen v0.0.1
 	github.com/spf13/cobra v1.9.1
 	gopkg.in/yaml.v3 v3.0.1
 )

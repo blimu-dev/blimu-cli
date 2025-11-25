@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	platform "github.com/blimu-dev/blimu-cli/internal/sdk"
 	"github.com/blimu-dev/blimu-cli/pkg/shared"
-	platform "github.com/blimu-dev/blimu-platform-go"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

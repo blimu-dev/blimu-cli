@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/http"
 
+	platform "github.com/blimu-dev/blimu-cli/internal/sdk"
 	"github.com/blimu-dev/blimu-cli/pkg/auth"
-	platform "github.com/blimu-dev/blimu-platform-go"
 )
 
 // Client represents the Blimu API client

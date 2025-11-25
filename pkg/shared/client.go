@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/blimu-dev/blimu-cli/internal/oauth"
+	platform "github.com/blimu-dev/blimu-cli/internal/sdk"
 	"github.com/blimu-dev/blimu-cli/pkg/auth"
 	"github.com/blimu-dev/blimu-cli/pkg/config"
-	platform "github.com/blimu-dev/blimu-platform-go"
 	// runtime "github.com/blimu-dev/blimu-go" // Will be used for token refresh
 )
 
