@@ -78,42 +78,67 @@ func fetchRemoteEnvironments(devMode bool) ([]EnvironmentInfo, error) {
 	}
 
 	// Get user's active resources (effective permissions)
-	activeResources, err := client.Me.GetActiveResources()
+	userAccess, err := client.Me.GetAccess()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user's active resources: %w", err)
 	}
 
-	fmt.Printf("🔍 Found %d active resources for user\n", len(activeResources))
+	fmt.Printf("🔍 Found %d workspaces for user\n", len(userAccess.Workspaces))
 
 	var environments []EnvironmentInfo
 
-	// Parse environment resources from active resources
-	for i, resource := range activeResources {
-		if resourceData, ok := resource.Resource.(map[string]interface{}); ok {
-			fmt.Printf("   Resource %d: Role=%s, Type=%v\n", i+1, resource.Role, getStringFromMap(resourceData, "type"))
+	// Parse environments from workspaces
+	for i, workspaceData := range userAccess.Workspaces {
+		workspaceID := getStringFromMap(workspaceData, "id")
+		workspaceName := getStringFromMap(workspaceData, "name")
 
-			// Check if this is an environment resource
-			if resourceType, exists := resourceData["type"]; exists && resourceType == "environment" {
-				id := getStringFromMap(resourceData, "id")
-				name := getStringFromMap(resourceData, "name")
-				envWorkspaceId := getStringFromMap(resourceData, "workspaceId")
+		fmt.Printf("   Workspace %d: id=%s, name=%s\n", i+1, workspaceID, workspaceName)
 
-				fmt.Printf("   ✅ Found environment: id=%s, name=%s, workspaceId=%s\n", id, name, envWorkspaceId)
+		// Extract environments from this workspace
+		envsRaw, exists := workspaceData["environments"]
+		if !exists {
+			fmt.Printf("      No environments found in workspace\n")
+			continue
+		}
 
-				// If no name is provided, use the ID as name
-				if name == "" {
-					name = id
-				}
+		envsArray, ok := envsRaw.([]interface{})
+		if !ok {
+			fmt.Printf("      ⚠️  Environments field is not an array\n")
+			continue
+		}
 
-				if id != "" {
-					environments = append(environments, EnvironmentInfo{
-						ID:          id,
-						Name:        name,
-						WorkspaceID: envWorkspaceId,
-						IsLocal:     false,
-						IsActive:    false,
-					})
-				}
+		for j, envRaw := range envsArray {
+			envData, ok := envRaw.(map[string]interface{})
+			if !ok {
+				fmt.Printf("      ⚠️  Environment %d: invalid format\n", j+1)
+				continue
+			}
+
+			envID := getStringFromMap(envData, "id")
+			envName := getStringFromMap(envData, "name")
+			envType := getStringFromMap(envData, "type")
+
+			// Verify this is an environment resource
+			if envType != "environment" {
+				fmt.Printf("      ⚠️  Environment %d: invalid type '%s'\n", j+1, envType)
+				continue
+			}
+
+			fmt.Printf("      ✅ Found environment: id=%s, name=%s, workspaceId=%s\n", envID, envName, workspaceID)
+
+			// If no name is provided, use the ID as name
+			if envName == "" {
+				envName = envID
+			}
+
+			if envID != "" {
+				environments = append(environments, EnvironmentInfo{
+					ID:          envID,
+					Name:        envName,
+					WorkspaceID: workspaceID,
+					IsLocal:     false,
+					IsActive:    false,
+				})
 			}
 		}
 	}

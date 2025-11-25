@@ -237,57 +237,70 @@ func fetchUserWorkspaceAndEnvironment(accessToken, platformURL string) (workspac
 	)
 
 	// Get user's active resources
-	activeResources, err := client.Me.GetActiveResources()
+	userAccess, err := client.Me.GetAccess()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get active resources: %w", err)
 	}
 
-	fmt.Printf("🔍 Found %d active resources\n", len(activeResources))
+	fmt.Printf("🔍 Found %d workspaces for user\n", len(userAccess.Workspaces))
 
-	if len(activeResources) == 0 {
-		return "", "", fmt.Errorf("no active resources found for user")
+	if len(userAccess.Workspaces) == 0 {
+		return "", "", fmt.Errorf("no workspaces found for user")
 	}
 
-	// Look for workspace and environment resources in the active resources
-	for i, resource := range activeResources {
-		fmt.Printf("   Resource %d: Role=%s, Inherited=%t\n", i+1, resource.Role, resource.Inherited)
+	// Look for workspace and environment resources
+	for i, workspaceData := range userAccess.Workspaces {
+		wsID := getStringFromMap(workspaceData, "id")
+		wsName := getStringFromMap(workspaceData, "name")
+		wsType := getStringFromMap(workspaceData, "type")
 
-		if resourceData, ok := resource.Resource.(map[string]interface{}); ok {
-			// Print the resource data for debugging
-			fmt.Printf("   Resource data: %+v\n", resourceData)
+		fmt.Printf("   Workspace %d: id=%s, name=%s, type=%s\n", i+1, wsID, wsName, wsType)
 
-			// Check resource type
-			if resourceType, exists := resourceData["type"]; exists {
-				fmt.Printf("   Resource type: %v\n", resourceType)
+		// Extract workspace ID if we haven't found one yet
+		if workspaceID == "" && wsID != "" && wsType == "workspace" {
+			workspaceID = wsID
+			fmt.Printf("   ✅ Found workspace ID: %s\n", workspaceID)
+		}
 
-				// Look for environment
-				if resourceType == "environment" && environmentID == "" {
-					if id, exists := resourceData["id"]; exists {
-						if idStr, ok := id.(string); ok {
-							environmentID = idStr
-							fmt.Printf("   ✅ Found environment ID: %s\n", environmentID)
-						}
-					}
-					// Also check for workspace ID in environment resource
-					if wsID, exists := resourceData["workspaceId"]; exists {
-						if idStr, ok := wsID.(string); ok {
-							workspaceID = idStr
-							fmt.Printf("   ✅ Found workspace ID from environment: %s\n", workspaceID)
-						}
-					}
+		// Extract environments from this workspace
+		envsRaw, exists := workspaceData["environments"]
+		if !exists {
+			fmt.Printf("      No environments found in workspace\n")
+			continue
+		}
+
+		envsArray, ok := envsRaw.([]interface{})
+		if !ok {
+			fmt.Printf("      ⚠️  Environments field is not an array\n")
+			continue
+		}
+
+		// Look for environment ID if we haven't found one yet
+		if environmentID == "" {
+			for j, envRaw := range envsArray {
+				envData, ok := envRaw.(map[string]interface{})
+				if !ok {
+					fmt.Printf("      ⚠️  Environment %d: invalid format\n", j+1)
+					continue
 				}
 
-				// Look for workspace
-				if resourceType == "workspace" && workspaceID == "" {
-					if id, exists := resourceData["id"]; exists {
-						if idStr, ok := id.(string); ok {
-							workspaceID = idStr
-							fmt.Printf("   ✅ Found workspace ID: %s\n", workspaceID)
-						}
+				envID := getStringFromMap(envData, "id")
+				envName := getStringFromMap(envData, "name")
+				envType := getStringFromMap(envData, "type")
+
+				fmt.Printf("      Environment %d: id=%s, name=%s, type=%s\n", j+1, envID, envName, envType)
+
+				if envType == "environment" && envID != "" {
+					environmentID = envID
+					fmt.Printf("      ✅ Found environment ID: %s\n", environmentID)
+					// If we found an environment, also use its workspace ID
+					if workspaceID == "" && wsID != "" {
+						workspaceID = wsID
+						fmt.Printf("      ✅ Using workspace ID from environment's workspace: %s\n", workspaceID)
 					}
+					break
 				}
 			}
-
 		}
 	}
 
@@ -299,4 +312,14 @@ func fetchUserWorkspaceAndEnvironment(accessToken, platformURL string) (workspac
 	}
 
 	return workspaceID, environmentID, nil
+}
+
+// getStringFromMap safely extracts a string value from a map[string]interface{}
+func getStringFromMap(data map[string]interface{}, key string) string {
+	if val, ok := data[key]; ok {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	return ""
 }

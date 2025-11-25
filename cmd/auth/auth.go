@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/blimu-dev/blimu-cli/pkg/auth"
 	"github.com/blimu-dev/blimu-cli/pkg/shared"
 	"github.com/spf13/cobra"
 )
@@ -66,8 +65,11 @@ func (c *TestAuthCommand) Run() error {
 		return fmt.Errorf("no OAuth authentication found. Please run 'blimu auth login' to authenticate")
 	}
 
-	// Create authenticated client
-	client := auth.NewClientWithClerkToken(apiURL, currentEnv.AccessToken)
+	// Get authenticated client (this will automatically refresh tokens if needed)
+	client, err := shared.GetAuthClient()
+	if err != nil {
+		return fmt.Errorf("failed to get authenticated client: %w", err)
+	}
 
 	// Test authentication
 	if err := client.ValidateAuth(); err != nil {

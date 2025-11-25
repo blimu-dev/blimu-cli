@@ -61,7 +61,7 @@ func (c *Client) ValidateAuth() error {
 	}
 
 	// Try to get current user's active resources as a way to validate auth
-	_, err := c.platformSDK.Me.GetActiveResources()
+	_, err := c.platformSDK.Me.GetAccess()
 	if err != nil {
 		return fmt.Errorf("authentication failed: %w", err)
 	}

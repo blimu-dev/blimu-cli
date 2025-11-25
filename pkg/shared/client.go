@@ -42,10 +42,18 @@ func GetSDKClientWithDevMode(devMode bool) (*platform.Client, error) {
 	if currentEnv.IsOAuthAuthenticated() {
 		// Check if token needs refresh
 		if currentEnv.NeedsTokenRefresh() && currentEnv.RefreshToken != "" {
-			// TODO: Implement Clerk token refresh
-			fmt.Printf("⚠️  Token refresh not yet implemented for Clerk OAuth.\n")
-			fmt.Printf("Please run 'blimu auth login' to re-authenticate\n")
-			return nil, fmt.Errorf("token expired, please re-authenticate")
+			fmt.Printf("🔄 Refreshing expired access token...\n")
+			if err := refreshPlatformTokens(cliConfig, currentEnv, platformURL); err != nil {
+				fmt.Printf("⚠️  Failed to refresh token: %v\n", err)
+				fmt.Printf("Please run 'blimu auth login' to re-authenticate\n")
+				return nil, fmt.Errorf("token refresh failed: %w", err)
+			}
+			// Reload the environment after refresh
+			currentEnv, err = cliConfig.GetCurrentEnvironment()
+			if err != nil {
+				return nil, fmt.Errorf("failed to reload environment after token refresh: %w", err)
+			}
+			fmt.Printf("✅ Token refreshed successfully\n")
 		}
 
 		// Use Clerk JWT token with platform SDK
@@ -89,10 +97,18 @@ func GetAuthClientWithDevMode(devMode bool) (*auth.Client, error) {
 	if currentEnv.IsOAuthAuthenticated() {
 		// Check if token needs refresh
 		if currentEnv.NeedsTokenRefresh() && currentEnv.RefreshToken != "" {
-			// TODO: Implement Clerk token refresh
-			fmt.Printf("⚠️  Token refresh not yet implemented for Clerk OAuth.\n")
-			fmt.Printf("Please run 'blimu auth login' to re-authenticate\n")
-			return nil, fmt.Errorf("token expired, please re-authenticate")
+			fmt.Printf("🔄 Refreshing expired access token...\n")
+			if err := refreshPlatformTokens(cliConfig, currentEnv, platformURL); err != nil {
+				fmt.Printf("⚠️  Failed to refresh token: %v\n", err)
+				fmt.Printf("Please run 'blimu auth login' to re-authenticate\n")
+				return nil, fmt.Errorf("token refresh failed: %w", err)
+			}
+			// Reload the environment after refresh
+			currentEnv, err = cliConfig.GetCurrentEnvironment()
+			if err != nil {
+				return nil, fmt.Errorf("failed to reload environment after token refresh: %w", err)
+			}
+			fmt.Printf("✅ Token refreshed successfully\n")
 		}
 
 		// Create client with Clerk token for platform operations
@@ -117,7 +133,7 @@ func GetCurrentEnvironmentInfo() (*config.CLIConfig, *config.Environment, error)
 	return cliConfig, currentEnv, nil
 }
 
-// refreshTokens handles OAuth token refresh
+// refreshTokens handles OAuth token refresh for runtime API
 func refreshTokens(cliConfig *config.CLIConfig, env *config.Environment, apiURL string) error {
 	oauthConfig := oauth.Config{
 		ClientID: "blimu_cli",
@@ -142,5 +158,35 @@ func refreshTokens(cliConfig *config.CLIConfig, env *config.Environment, apiURL 
 	}
 	env.ExpiresAt = &expiresAt
 
+	return cliConfig.AddEnvironment(*env)
+}
+
+// refreshPlatformTokens handles OAuth token refresh for platform API
+func refreshPlatformTokens(cliConfig *config.CLIConfig, env *config.Environment, platformURL string) error {
+	oauthConfig := oauth.Config{
+		ClientID: "blimu_cli",
+		TokenURL: fmt.Sprintf("%s/oauth/token", platformURL),
+	}
+
+	oauthClient := oauth.NewClient(oauthConfig)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tokenResp, err := oauthClient.RefreshToken(ctx, env.RefreshToken)
+	if err != nil {
+		return fmt.Errorf("failed to refresh platform token: %w", err)
+	}
+
+	// Update environment with new tokens
+	expiresAt := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+	env.AccessToken = tokenResp.AccessToken
+	if tokenResp.RefreshToken != "" {
+		env.RefreshToken = tokenResp.RefreshToken
+	}
+	env.ExpiresAt = &expiresAt
+	env.TokenType = "Bearer"
+
+	// Save updated environment to config
 	return cliConfig.AddEnvironment(*env)
 }
