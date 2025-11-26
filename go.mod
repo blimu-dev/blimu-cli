@@ -3,7 +3,7 @@ module github.com/blimu-dev/blimu-cli
 go 1.25
 
 require (
-	github.com/blimu-dev/sdk-gen v0.0.1
+	github.com/blimu-dev/sdk-gen v0.0.2
 	github.com/spf13/cobra v1.9.1
 	gopkg.in/yaml.v3 v3.0.1
 )
