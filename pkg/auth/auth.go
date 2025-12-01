@@ -8,9 +8,9 @@ import (
 
 // Client represents a Blimu client that uses Clerk OAuth and platform SDK for operations
 type Client struct {
-	platformSDK *platform.Client // For CLI operations
-	baseURL     string
-	token       string // JWT token from Clerk OAuth
+	appSDK  *platform.Client // For CLI operations
+	baseURL string
+	token   string // JWT token from Clerk OAuth
 }
 
 // NewClientWithClerkOAuth creates a new client for Clerk OAuth authentication
@@ -22,15 +22,15 @@ func NewClientWithClerkOAuth(clerkDomain string) *Client {
 
 // NewClientWithClerkToken creates a client with Clerk JWT token for platform operations
 func NewClientWithClerkToken(platformBaseURL, clerkToken string) *Client {
-	platformSDK := platform.NewClient(
+	appSDK := platform.NewClient(
 		platform.WithBaseURL(platformBaseURL),
 		platform.WithBearer(clerkToken),
 	)
 
 	return &Client{
-		platformSDK: platformSDK,
-		baseURL:     platformBaseURL,
-		token:       clerkToken,
+		appSDK:  appSDK,
+		baseURL: platformBaseURL,
+		token:   clerkToken,
 	}
 }
 
@@ -39,9 +39,9 @@ func (c *Client) GetClerkToken() string {
 	return c.token
 }
 
-// GetPlatformSDK returns the platform SDK for CLI operations
-func (c *Client) GetPlatformSDK() *platform.Client {
-	return c.platformSDK
+// GetAppSDK returns the platform SDK for CLI operations
+func (c *Client) GetAppSDK() *platform.Client {
+	return c.appSDK
 }
 
 // GetBaseURL returns the base URL used by this client
@@ -56,12 +56,12 @@ func (c *Client) GetToken() string {
 
 // ValidateAuth validates the authentication by making a test request to platform API
 func (c *Client) ValidateAuth() error {
-	if c.platformSDK == nil {
+	if c.appSDK == nil {
 		return fmt.Errorf("no platform SDK configured - need JWT token")
 	}
 
 	// Try to get current user's active resources as a way to validate auth
-	_, err := c.platformSDK.Me.GetAccess()
+	_, err := c.appSDK.Me.GetAccess()
 	if err != nil {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
@@ -73,5 +73,5 @@ func (c *Client) ValidateAuth() error {
 
 // GetSDK returns the platform SDK (for backward compatibility)
 func (c *Client) GetSDK() *platform.Client {
-	return c.platformSDK
+	return c.appSDK
 }

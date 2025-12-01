@@ -90,7 +90,7 @@ func (c *Client) ValidateConfig(configJSON []byte, workspaceId, environmentId st
 	}
 
 	// Use the platform SDK to validate config
-	sdk := c.authClient.GetPlatformSDK()
+	sdk := c.authClient.GetAppSDK()
 	if sdk == nil {
 		return nil, fmt.Errorf("platform SDK not available")
 	}
@@ -266,7 +266,7 @@ func (c *Client) FetchOpenAPISpec() (map[string]interface{}, error) {
 
 // ListEnvironments fetches environments from the API
 func (c *Client) ListEnvironments(workspaceId string) (*platform.EnvironmentListDtoOutput, error) {
-	sdk := c.authClient.GetPlatformSDK()
+	sdk := c.authClient.GetAppSDK()
 	if sdk == nil {
 		return nil, fmt.Errorf("platform SDK not available")
 	}
@@ -283,7 +283,7 @@ func (c *Client) ListEnvironments(workspaceId string) (*platform.EnvironmentList
 // GetOpenAPIFromDb fetches OpenAPI spec from database definitions using platform SDK
 func (c *Client) GetOpenAPIFromDb(workspaceId, environmentId string) (*GenerateSDKResponse, error) {
 	// Get platform SDK client
-	sdk := c.authClient.GetPlatformSDK()
+	sdk := c.authClient.GetAppSDK()
 	if sdk == nil {
 		return nil, fmt.Errorf("platform SDK not available")
 	}

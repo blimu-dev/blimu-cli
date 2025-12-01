@@ -41,10 +41,10 @@ func WithHeaders(headers map[string]string) ClientOption {
 	}
 }
 
-// WithApiKeyAuth sets the API key for authentication
-func WithApiKeyAuth(apiKey string) ClientOption {
+// WithApiKey sets the API key for authentication
+func WithApiKey(apiKey string) ClientOption {
 	return func(c *Client) {
-		c.apiKeyAuth = apiKey
+		c.apiKey = apiKey
 	}
 }
 
@@ -60,7 +60,7 @@ type Client struct {
 	baseURL    string
 	httpClient *http.Client
 	headers    map[string]string
-	apiKeyAuth string
+	apiKey     string
 	bearer     string
 
 	// Services
@@ -139,8 +139,8 @@ func (c *Client) request(ctx context.Context, method, path string, query url.Val
 	}
 
 	// Set authentication headers
-	if c.apiKeyAuth != "" {
-		req.Header.Set("X-API-KEY", c.apiKeyAuth)
+	if c.apiKey != "" {
+		req.Header.Set("X-API-KEY", c.apiKey)
 	}
 	if c.bearer != "" {
 		req.Header.Set("Authorization", "Bearer "+c.bearer)

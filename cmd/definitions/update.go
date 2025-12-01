@@ -106,7 +106,7 @@ func (c *UpdateCommand) Run(cmd *cobra.Command) error {
 	}
 
 	// Get platform SDK client
-	sdk := authClient.GetPlatformSDK()
+	sdk := authClient.GetAppSDK()
 	if sdk == nil {
 		return fmt.Errorf("platform SDK not available")
 	}
