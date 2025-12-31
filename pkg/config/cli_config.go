@@ -49,7 +49,7 @@ func GetCLIConfigPath() (string, error) {
 func LoadCLIConfig() (*CLIConfig, error) {
 	config := &CLIConfig{
 		Environments:  make(map[string]Environment),
-		DefaultAPIURL: "https://blimu-api-42118893108.us-central1.run.app", // Runtime API for OAuth, platform API determined at runtime
+		DefaultAPIURL: "https://api.blimu.dev", // Runtime API for OAuth, platform API determined at runtime
 	}
 
 	// Try to load from config file
